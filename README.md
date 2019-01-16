@@ -1,5 +1,7 @@
 # VHDL_warrior
+
 An IDE for GHDL and GTKWAVE with additional features
+
 1)automatically generated testbench
 
 2)automatically generated declare and instance for components
