@@ -35,7 +35,8 @@
 #include<QApplication>
 #include"highlighter.h"
 #include"ejemplos.h"
-
+#include<QPainter>
+#include<QItemDelegate>
 namespace Ui {
 class MainWindow;
 }
@@ -68,7 +69,45 @@ public slots:
 };
 */
 
+class MyDelegate : public QItemDelegate {
+  public:
 
+    MyDelegate( QObject *parent ) : QItemDelegate( parent ) { }
+
+    void paint( QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index ) const {
+      QItemDelegate::paint( painter, option, index );
+
+       painter->setPen(QPen(QColor(0,200,0),1));
+//painter->drawLine(option.rect.bottomLeft(),option.rect.topLeft());
+//painter->drawLine(option.rect.bottomRight(),option.rect.topRight());
+
+   if( index.data(Qt::UserRole)==1) {
+       painter->drawLine(option.rect.topLeft(),option.rect.topRight());
+      }
+
+   if( index.data(Qt::UserRole)==2) {
+       painter->drawLine(option.rect.bottomLeft(),option.rect.bottomRight());
+      }
+
+   if( index.data(Qt::UserRole)==3) {
+       painter->drawLine(option.rect.topLeft(),option.rect.topRight());
+       painter->drawLine(option.rect.bottomLeft(),option.rect.topLeft());
+      }
+
+   if( index.data(Qt::UserRole)==4) {
+       painter->drawLine(option.rect.topLeft(),option.rect.topRight());
+        painter->drawLine(option.rect.bottomRight(),option.rect.topRight());
+      }
+
+   if( index.data(Qt::UserRole)==10) {
+       painter->drawLine(option.rect.bottomLeft(),option.rect.topLeft());
+       painter->drawLine(option.rect.topLeft(),option.rect.topRight());
+       painter->drawLine(option.rect.bottomRight(),option.rect.topRight());
+      }
+
+    }
+
+    };
 
 
 
@@ -221,6 +260,16 @@ void on_tabWidget_currentChanged(int index);
 void on_actionSalir_triggered();
 
 void on_lineEdit_6_returnPressed();
+
+void on_horizontalSlider_valueChanged(int value);
+
+void on_pushButton_17_clicked();
+
+void on_pushButton_18_clicked();
+
+void on_pushButton_19_clicked();
+
+void on_tableWidget_cellClicked(int row, int column);
 
 private:
     Ui::MainWindow *ui;

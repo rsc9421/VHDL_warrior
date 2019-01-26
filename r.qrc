@@ -1,42 +1,28 @@
 <RCC>
     <qresource prefix="/iconos">
-        <file>error.png</file>
-        <file>file.png</file>
         <file>valido.png</file>
-        <file>file2.png</file>
-        <file>file3.png</file>
         <file>file4.png</file>
         <file>folder.png</file>
         <file>open2.png</file>
-        <file>compilar.png</file>
         <file>comp.png</file>
-        <file>a1.png</file>
-        <file>a2.png</file>
-        <file>F.png</file>
         <file>back.png</file>
         <file>back2.png</file>
         <file>gtkwave.png</file>
         <file>sm.jpg</file>
-        <file>b1.png</file>
-        <file>b3.png</file>
         <file>sim2.png</file>
-        <file>tho2.png</file>
         <file>b4.png</file>
-        <file>axes.png</file>
-        <file>cubil.png</file>
-        <file>b5.png</file>
-        <file>F2.png</file>
         <file>gg2.png</file>
         <file>file7.png</file>
         <file>file8.png</file>
         <file>file9.png</file>
         <file>hammer.png</file>
-        <file>auction.png</file>
-        <file>F3.png</file>
-        <file>FPG.png</file>
-        <file>F234.png</file>
         <file>dragoon1.gif</file>
         <file>r2.png</file>
         <file>r1.png</file>
+        <file>org2.png</file>
+        <file>down.png</file>
+        <file>up.png</file>
+        <file>e.png</file>
+        <file>clock2.png</file>
     </qresource>
 </RCC>

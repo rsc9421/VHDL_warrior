@@ -14,8 +14,11 @@ using namespace std;
 #include<QToolTip>
 #include<QStringListModel>
 #include<QMovie>
+#include<QInputDialog>
 int current1,current2,previous1,previous2;
+char primero=1;
 QFileSystemModel *dirModel;
+int current_row_table;
 QFileSystemModel *fileModel;
   int n_component=0;
  QCompleter *completer;
@@ -39,10 +42,24 @@ void reemplazar( string &s, const string &search, const string &replace ) {
         s.insert( pos, replace );
     }
 }
-
+QString d_to_b(int numero, int bits){
+    QString n="";
+    int i = 0;
+           unsigned int u_i = 0;
+           int j            = 0;
+           int b[200]        = {0};
+i=numero;
+           u_i = (unsigned int)i;
+           for(j=bits-1;j>=0;j--) {
+               b[j] = u_i & 0x1;
+               u_i  = u_i >> 1;
+           }
+           for (j=0;j<=bits-1;j++)
+          n+=QString::number(b[j]);
+           return n;
+}
 void MainWindow::guardar(QString dir) {
-    dir=dir.replace(".vhdl","");
-    dir+=".vhdl";
+
     QFile file2(dir);
         if(!file2.open(QFile::WriteOnly | QFile::Text)){}
         QTextStream out(&file2);
@@ -56,7 +73,7 @@ void MainWindow::guardar(QString dir) {
 QString MainWindow::get_component3(QString dir, QString codigo){
     string proyecto,proyecto2;
     proyecto.clear();
-    QString nombre_puro=nombreActual.replace(".vhdl","");
+    QString nombre_puro=nombreActual.split(".")[0];
 
     proyecto2+=": "+nombre_puro.toStdString()+" port map(";
 
@@ -141,7 +158,7 @@ QString MainWindow::get_component3(QString dir, QString codigo){
 QString get_component2(QString dir, QString codigo){
     string proyecto;
     proyecto.clear();
-    QString nombre_puro=nombreActual.replace(".vhdl","");
+    QString nombre_puro=nombreActual.split(".")[0];
 
     proyecto+="component "+nombre_puro.toStdString()+" is port(\n";
 
@@ -176,14 +193,14 @@ int i=0;
 
     for(i=0;i<lista2.length();i++){
     a2=lista2[i];
-    if(a2.contains("in") || a2.contains("out") || a2.contains("inout")){
+    if(a2.contains("in") || a2.contains("out") ){
     b2=a2.split(':');
 
     component+=b2[0];
     component+=" : ";
      if(a2.contains("in")) component+="in ";
      if(a2.contains("out")) component+="out ";
-     if(a2.contains("inout")) component+="inout ";
+
 
 
     if(b2[1].contains("downto")){
@@ -232,7 +249,7 @@ void MainWindow::declarar_componente(){
     QString path = ubicacionActual;
         QDir dir(path);
         QStringList filters;
-        filters << "*.vhdl";
+        filters << "*.vhdl"<<"*.vhd";
 
         foreach (QFileInfo fileInfo, dir.entryInfoList(filters, QDir::Files))
         {
@@ -295,7 +312,7 @@ void MainWindow::instancear_componente(){
     QString path = ubicacionActual;
         QDir dir(path);
         QStringList filters;
-        filters << "*.vhdl";
+        filters << "*.vhdl"<<"*.vhd";
         foreach (QFileInfo fileInfo, dir.entryInfoList(filters, QDir::Files))
         {
             fileName = fileInfo.absoluteFilePath();
@@ -346,20 +363,40 @@ connect(completer, SIGNAL(activated(QString)),
 
 bool MainWindow::compilar(QString dir){
   bool  compiladobn=0;
+  QString options="",p="";
     if(!oscuro) ui->textEdit_2->setTextColor(Qt::black);
     else {
        ui->textEdit_2->setTextColor(Qt::white);
     }
 
 
-    dir=dir.replace(".vhdl","");
-    dir+=".vhdl";
+    QFile inputFile(ubicacionActual+dir);
+    if (inputFile.open(QIODevice::ReadOnly))
+    {
+       QTextStream in(&inputFile);
+       while (!in.atEnd())
+        {
+          QString line = in.readLine();
+          line=line.toLower();
+          if(!line.contains("--")){if(line.contains("ieee.std_logic_unsigned") || line.contains("ieee.std_logic_signed") || line.contains("std_logic_arith")){options+=" --ieee=synopsys -fexplicit ";
+              if(line.contains("ieee.std_logic_unsigned"))p+=" ieee.std_logic_unsigned ";
+           if(line.contains("ieee.std_logic_signed"))p+=" ieee.std_logic_signed ";
+           if(line.contains("ieee.std_logic_arith"))p+=" std_logic_arith ";
+              }}
+    }
+       inputFile.close();
+    }
+    else qDebug()<<"nose pudo abrir!"<<ubicacionActual+dir;
+
+
+
+    if(!p.isEmpty())ui->textEdit_2->append("WARNING never use"+ p +"instead, always use numeric_std \n see more info "+"https://www.nandland.com/articles/std_logic_arith_vs_numeric_std.html");
 
 
 
  process.setWorkingDirectory(ubicacionActual);
- ui->textEdit_2->append("$ ghdl -a "+dir);
-     process.start("ghdl -a "+dir);
+ ui->textEdit_2->append("$ ghdl -a "+options+dir);
+     process.start("ghdl -a "+options+dir);
      process.waitForFinished(-1); // will wait forever until finished
 
       Consola = process.readAllStandardOutput();
@@ -390,20 +427,6 @@ bool MainWindow::compilar(QString dir){
  ui->textEdit_2->verticalScrollBar()->setValue(ui->textEdit_2->verticalScrollBar()->maximum());
  return compiladobn;
 }
-long long DtoB(int n)
-{
-    long long binaryNumber = 0;
-    int remainder, i = 1, step = 1;
-
-    while (n!=0)
-    {
-        remainder = n%2;
-        n /= 2;
-        binaryNumber += remainder*i;
-        i *= 10;
-    }
-    return binaryNumber;
-}
 int BtoD(long long n)
 {
     int decimalNumber = 0, i = 0, remainder;
@@ -415,6 +438,55 @@ int BtoD(long long n)
         ++i;
     }
     return decimalNumber;
+}
+QString unsigned_DtoB(int n)
+{
+    long long binaryNumber = 0;
+    int remainder, i = 1, step = 1;
+
+    while (n!=0)
+    {
+        remainder = n%2;
+        n /= 2;
+        binaryNumber += remainder*i;
+        i *= 10;
+    }
+    return QString::number(binaryNumber);
+}
+
+QString signed_DtoB(int n)
+{
+    if(n<0){
+    long long binaryNumber = 0;
+    int remainder, i = 1, step = 1;
+
+    while (n!=0)
+    {
+        remainder = n%2;
+        n /= 2;
+        binaryNumber += remainder*i;
+        i *= 10;
+    }
+    binaryNumber=abs(binaryNumber);
+    QString b="1"+QString::number(binaryNumber);
+
+    return b;
+    }
+    else {
+        long long binaryNumber = 0;
+        int remainder, i = 1, step = 1;
+
+        while (n!=0)
+        {
+            remainder = n%2;
+            n /= 2;
+            binaryNumber += remainder*i;
+            i *= 10;
+        }
+        binaryNumber=abs(binaryNumber);
+        QString b="0"+QString::number(binaryNumber);
+        return b;
+    }
 }
 std::string nameFromFile(const std::string& fullPath)
 {
@@ -445,13 +517,44 @@ string get_component(string direccion_archivo){
 string testbench;
 unsigned int sd=1;
 QStringList signal_lista;
-QString convertidorActual="decimal",signales_valores;
+QString convertidorActual="unsigned_decimal",signales_valores;
 string name_actual,namePuro_actual,name_tb_actual,namePuro_tb_actual;
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    process.start("ghdl -v");
+    process.waitForFinished(-1); // will wait forever until finished
+
+    QString Consola1 = process.readAllStandardOutput();
+    //QString Consola1 = "";
+    QString errorConsola1 = process.readAllStandardError();
+
+    process.start("gtkwave -V");
+    process.waitForFinished(-1); // will wait forever until finished
+
+    QString Consola2 = process.readAllStandardOutput();
+ //   QString Consola2 = "";
+    QString errorConsola2 = process.readAllStandardError();
+
+     if((Consola1.isEmpty() && errorConsola1.isEmpty())||(Consola2.isEmpty() && errorConsola2.isEmpty())){
+
+         QString h;
+         ui->pushButton_3->setEnabled(false);
+         ui->pushButton_6->setEnabled(false);
+  h+="Some free software are needed to run this program \n";
+
+if((Consola1.isEmpty() && errorConsola1.isEmpty()))h+="*GHDL is not installed\n";
+if((Consola2.isEmpty() && errorConsola2.isEmpty()))h+="*GTKWAVE is not installed\n";
+h+="to continue, you must install it manually";
+        ui->label_3->setText(h);
+
+
+
+     }
+
     ui->textEdit_3->setText("");
 for(sd=1;sd<= ui->textEdit->document()->blockCount();sd++){
     ui->textEdit_3->append(QString::number(sd));
@@ -490,7 +593,7 @@ QString sPath = QDir::rootPath();
    fileModel->setRootPath(sPath);
 
        QStringList filters;
-       filters << "*.vhdl";
+       filters << "*.vhdl"<<"*.vhd";
        fileModel->setNameFilters(filters);
        fileModel->setNameFilterDisables(false);
    for (int i = 1; i < dirModel->columnCount(); ++i)
@@ -504,6 +607,27 @@ ui->textEdit_3->setStyleSheet("color: rgb(110,110,110);"
                               "background-color: rgb(240,240,240);"
                               "foreground-color: rgb(110,110,110);"
                               "selection-background-color: rgb(90,90,90);");
+ui->groupBox_9->setStyleSheet("color: rgb(240,240,0);"
+                              "background-color: rgb(10,30,30);"
+                              "foreground-color: rgb(240,240,0);"
+                              "margin-top: 0px;"
+                              "font-size: 14px;"
+                              " font-style:italic;"
+                              "font-weight: bold;"
+                              "padding: 5px 0px;"
+                              "border-top-left-radius: 15px;"
+                              "border-top-right-radius: 100px;"
+                              "border-bottom-left-radius: 50px;"
+                              "border-bottom-right-radius: 15px;"
+                              "selection-background-color: rgb(90,90,90);"
+                              );
+
+
+
+ui->label_15->setStyleSheet(
+            " font-style:italic;"
+"font-weight: normal;"
+                              );
 //cambiar la fuente por monospace del sistema
 
 //const QFont fixedFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
@@ -523,6 +647,7 @@ ui->textEdit->setLineWrapMode(QTextEdit::NoWrap);
 ui->textEdit_2->installEventFilter(this);
 ui->textEdit_2->setLineWrapMode(QTextEdit::NoWrap);
 ui->textEdit_3->setAlignment(Qt::AlignRight);
+ui->tableWidget->installEventFilter(this);
 //ui->textEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
 
@@ -560,6 +685,9 @@ QMovie *mv = new QMovie(":/iconos/dragoon1.gif");
 ui->label->setAttribute(Qt::WA_NoSystemBackground);
 ui->label->setMovie(mv);
 mv->start();
+
+convertidorActual="unsigned_decimal";
+ui->radioButton_3->setChecked(true);
 }
 
 
@@ -602,6 +730,7 @@ void MainWindow::closeEvent (QCloseEvent *event)
 }
 void MainWindow::on_actionAbrir_triggered()
 {
+     primero=0;
     dir = QFileDialog::getOpenFileName( this,tr("Abrir .VHDL")," ",tr("VHDL (*.vhdl)"));
     QString nom=dir.mid(dir.lastIndexOf("/")+1,dir.length());
     QString fol=dir.mid(0,dir.lastIndexOf("/"));fol+="/";
@@ -611,8 +740,7 @@ ui->treeView->setCurrentIndex(dirModel->setRootPath(fol));
 //guardar
 ubicacionActual=fol;
 nombreActual=nom;
-nombreActual.replace(".vhdl","");
-nombreActual+=".vhdl";
+
 QString dir=ubicacionActual+nombreActual;
 
 //cargar
@@ -629,7 +757,7 @@ ui->treeView->setCurrentIndex(dirModel->setRootPath(fol));
     items.clear();items_normales.clear();items_testbench.clear();
             QDir path(fol);
             QStringList filters;
-            filters << "*.vhdl";
+            filters << "*.vhdl"<<"*.vhd";
             path.setNameFilters(filters);
             items = path.entryList();
 
@@ -723,18 +851,18 @@ void MainWindow::on_pushButton_4_clicked()
     for(int i=0;i<n;i++){
     QComboBox* combobox = new QComboBox();
     ui->tableWidget_2->setCellWidget(i,1,combobox);
-    QStringList list=(QStringList()<<"in"<<"out"<<"inout");
+    QStringList list=(QStringList()<<"in"<<"out");
     combobox->addItems(list);
-
-    #if (defined (_WIN32) || defined (_WIN64))
-     ui->lineEdit_5->setText("C:\Windows");
-    #endif
-    #if (defined (LINUX) || defined (__linux__))
-     ui->lineEdit_5->setText("/home/"+qgetenv("USER")+"/");
-    #endif
 
 
     }
+#if (defined (_WIN32) || defined (_WIN64))
+  if(primero==1){ui->lineEdit_5->setText("C:\Windows");primero=0;}else ui->lineEdit_5->setText(ubicacionActual);
+primero=0;
+#endif
+#if (defined (LINUX) || defined (__linux__))
+ if(primero==1){ui->lineEdit_5->setText("/home/"+qgetenv("USER")+"/");primero=0;}else ui->lineEdit_5->setText(ubicacionActual);
+#endif
 }
 
 
@@ -782,7 +910,7 @@ void MainWindow::on_actionGuardar_triggered()
 
 void MainWindow::on_actionGuardar_como_triggered()
 {
-    dir = QFileDialog::getSaveFileName(this, tr("Save"),"new_file",tr("VHDL (*.vhdl)"));
+    dir = QFileDialog::getSaveFileName(this, tr("Save"),"new_file",tr("VHDL (*.vhdl *.vhd)"));
     QFile file2(dir);
         if(!file2.open(QFile::WriteOnly | QFile::Text)){return;}
         QTextStream out(&file2);
@@ -799,17 +927,22 @@ void MainWindow::on_pushButton_clicked()
          ui->textEdit_2->setText("");
 
 
- guardar(ubicacionActual+nombreActual+".vhdl");
- compilar(nombreActual+".vhdl");
+ guardar(ubicacionActual+nombreActual);
+ compilar(nombreActual);
+}
+
+void MainWindow::on_radioButton_3_clicked()
+{
+ convertidorActual="signed decimal";
 }
 
 void MainWindow::on_radioButton_clicked()
 {
     QStringList nn;
-    if(convertidorActual=="decimal"){
+    if(convertidorActual=="unsigned_decimal"){
         for(int i=0;i<ui->tableWidget->model()->rowCount();i++){
             for(int j=0;j<ui->tableWidget->model()->columnCount();j++){
-ui->tableWidget->setItem(i,j,new QTableWidgetItem(QString::number(DtoB(ui->tableWidget->item(i,j)->text().toLong()))));
+ui->tableWidget->setItem(i,j,new QTableWidgetItem(unsigned_DtoB(ui->tableWidget->item(i,j)->text().toLong())));
             }
         }
     }
@@ -826,8 +959,10 @@ void MainWindow::on_radioButton_2_clicked()
             }
         }
     }
-    convertidorActual="decimal";
+    convertidorActual="unsigned_decimal";
 }
+
+
 
 void MainWindow::on_lineEdit_returnPressed()
 {
@@ -863,7 +998,9 @@ i=n;
 
 void MainWindow::on_pushButton_6_clicked()
 {
-    dir = QFileDialog::getOpenFileName( this,tr("Abrir .VHDL")," ",tr("VHDL (*.vhdl)"));
+    primero=0;
+    dir = QFileDialog::getOpenFileName(this, tr("Load"),"load",tr("VHDL (*.vhdl *.vhd)"));
+
     QString nom=dir.mid(dir.lastIndexOf("/")+1,dir.length());
     QString fol=dir.mid(0,dir.lastIndexOf("/"));fol+="/";
 //ui->listView->setRootIndex(fileModel->setRootPath(fol));
@@ -872,8 +1009,7 @@ ui->treeView->setCurrentIndex(dirModel->setRootPath(fol));
 //guardar
 ubicacionActual=fol;
 nombreActual=nom;
-nombreActual.replace(".vhdl","");
-nombreActual+=".vhdl";
+qDebug()<<nombreActual;
 QString dir=ubicacionActual+nombreActual;
 
 //cargar
@@ -890,7 +1026,7 @@ ui->treeView->setCurrentIndex(dirModel->setRootPath(fol));
     items.clear();items_normales.clear();items_testbench.clear();
             QDir path(fol);
             QStringList filters;
-            filters << "*.vhdl";
+            filters << "*.vhdl"<<"*.vhd";
             path.setNameFilters(filters);
             items = path.entryList();
 
@@ -989,18 +1125,22 @@ ui->tableWidget_2->setHorizontalHeaderLabels(lis2);
 for(int i=0;i<n;i++){
 QComboBox* combobox = new QComboBox();
 ui->tableWidget_2->setCellWidget(i,1,combobox);
-QStringList list=(QStringList()<<"in"<<"out"<<"inout");
+QStringList list=(QStringList()<<"in"<<"out");
 combobox->addItems(list);
 
-#if (defined (_WIN32) || defined (_WIN64))
- ui->lineEdit_5->setText("C:\Windows");
-#endif
-#if (defined (LINUX) || defined (__linux__))
- ui->lineEdit_5->setText("/home/"+qgetenv("USER")+"/");
-#endif
+
+
+
 
 
 }
+#if (defined (_WIN32) || defined (_WIN64))
+  if(primero==1){ui->lineEdit_5->setText("C:\Windows");primero=0;}else ui->lineEdit_5->setText(ubicacionActual);
+primero=0;
+#endif
+#if (defined (LINUX) || defined (__linux__))
+ if(primero==1){ui->lineEdit_5->setText("/home/"+qgetenv("USER")+"/");primero=0;}else ui->lineEdit_5->setText(ubicacionActual);
+#endif
 }
 
 void MainWindow::on_pushButton_5_clicked()
@@ -1030,7 +1170,7 @@ void MainWindow::on_pushButton_5_clicked()
         items.clear();items_normales.clear();items_testbench.clear();
                 QDir path(fol);
                 QStringList filters;
-                filters << "*.vhdl";
+                filters << "*.vhdl"<<"*.vhd";
                 path.setNameFilters(filters);
                 items = path.entryList();
 
@@ -1100,10 +1240,7 @@ void MainWindow::on_tableWidget_pressed(const QModelIndex &index)
 
 }
 
-void MainWindow::on_radioButton_3_clicked()
-{
 
-}
 
 void MainWindow::on_radioButton_4_clicked()
 {
@@ -1252,7 +1389,7 @@ void MainWindow::on_textEdit_cursorPositionChanged()
                       ui->textEdit_3->setAlignment(Qt::AlignRight);
 
             }
-
+ui->textEdit_3->verticalScrollBar()->setValue(ui->textEdit->verticalScrollBar()->value());
 }
 
 void MainWindow::on_actionNuevo_triggered()
@@ -1283,7 +1420,7 @@ void MainWindow::on_actionNuevo_triggered()
     for(int i=0;i<n;i++){
     QComboBox* combobox = new QComboBox();
     ui->tableWidget_2->setCellWidget(i,1,combobox);
-    QStringList list=(QStringList()<<"in"<<"out"<<"inout");
+    QStringList list=(QStringList()<<"in"<<"out");
     combobox->addItems(list);
 
     #if (defined (_WIN32) || defined (_WIN64))
@@ -1322,7 +1459,7 @@ void MainWindow::on_lineEdit_7_returnPressed()
     for(int i=0;i<n;i++){
     QComboBox* combobox = new QComboBox();
     ui->tableWidget_2->setCellWidget(i,1,combobox);
-    QStringList list=(QStringList()<<"in"<<"out"<<"inout");
+    QStringList list=(QStringList()<<"in"<<"out");
     combobox->addItems(list);
 }
 }
@@ -1339,7 +1476,7 @@ void MainWindow::on_pushButton_9_clicked()
     for(int i=0;i<n;i++){
         QComboBox* combobox = new QComboBox();
         ui->tableWidget_2->setCellWidget(i,1,combobox);
-        QStringList list=(QStringList()<<"in"<<"out"<<"inout");
+        QStringList list=(QStringList()<<"in"<<"out");
         combobox->addItems(list);
 }
 }
@@ -1410,8 +1547,7 @@ ui->textEdit_3->verticalScrollBar()->setValue(ui->textEdit->verticalScrollBar()-
 //guardar
 ubicacionActual=ui->lineEdit_5->text();
 nombreActual=ui->lineEdit_6->text();
-nombreActual.replace(".vhdl","");
-nombreActual+=".vhdl";
+if(!nombreActual.contains(".vhdl") && !nombreActual.contains(".vhd")){nombreActual+=".vhdl";}
 QString dir=ubicacionActual+nombreActual;
 QFile file(dir);
     if(!file.open(QFile::WriteOnly | QFile::Text)){return;}
@@ -1437,7 +1573,7 @@ ui->treeView->setCurrentIndex(dirModel->setRootPath(fol));
     items.clear();items_normales.clear();items_testbench.clear();
             QDir path(fol);
             QStringList filters;
-            filters << "*.vhdl";
+            filters << "*.vhdl"<<"*.vhd"<<"*.vhd";
             path.setNameFilters(filters);
             items = path.entryList();
 
@@ -1597,6 +1733,7 @@ ui->tableWidget->setColumnCount(n_columnas);
 
 void MainWindow::on_pushButton_7_clicked()
 {
+ui->label_13->setVisible(false);
     ui->textEdit_2->setText("");ui->label_5->setText(nombreActual);
 //guardar todo
 codigo[ui->listWidget->currentRow()]=ui->textEdit->toPlainText();
@@ -1637,7 +1774,9 @@ yut=ui->textEdit->toPlainText().toStdString();
  txt=ui->textEdit->toPlainText();
 yut=ui->textEdit->toPlainText().toStdString();
 proyecto.clear();
-QString nombre_puro=nombreActual.replace(".vhdl","");
+
+QString nombre_puro=nombreActual.split(".")[0];
+
 proyecto+="--testbench automatically generated by a robot :D\n";
 proyecto+="library ieee;\nuse ieee.std_logic_1164.all;\n\n";
 proyecto+="entity "+nombre_puro.toStdString()+"_tb"+" is\n";
@@ -1683,14 +1822,14 @@ r[i]='\0';
 
 for(i=0;i<lista2.length();i++){
 a2=lista2[i];
-if(a2.contains("in") || a2.contains("out") || a2.contains("inout")){
+if(a2.contains("in") || a2.contains("out") ){
 b2=a2.split(':');
 
 component+=b2[0];
 component+=" : ";
  if(a2.contains("in")) component+="in ";
  if(a2.contains("out")) component+="out ";
- if(a2.contains("inout")) component+="inout ";
+
 
 
 if(b2[1].contains("downto")){
@@ -1724,7 +1863,7 @@ h2.replace(h3,1,");");
 proyecto=h2.toStdString();
 
 proyecto+="end component;\n";
-ui->textEdit_2->setText(QString::fromStdString(proyecto));
+
 
 
 txt=txt2;
@@ -2012,10 +2151,15 @@ ui->tableWidget->setRowCount(valores_finales.length());
 ui->tableWidget->setVerticalHeaderLabels(valores_finales);
 
 //ui->textEdit_2->setText("");for(int i=0;i<bits_lista.length();i++){ui->textEdit_2->append(bits_lista[i]);}
+ui->tableWidget->setCurrentCell(0,0);
+for(int i=0;i<ui->tableWidget->model()->columnCount();i++)
+ui->tableWidget->setColumnWidth(i,ui->horizontalSlider->value());
 }
 
 void MainWindow::on_pushButton_12_clicked()
 {
+    ui->label_13->setVisible(true);
+    ui->label_13->setEnabled(true);
     proyecto=proyecto_copia;
 //check si hay items nulos, si los hay ponerles 0
     for(int i=0;i<ui->tableWidget->model()->columnCount();i++){
@@ -2041,36 +2185,53 @@ signales_valores.clear();
 
     }
 
-            if(convertidorActual=="decimal"){
-
+            if(convertidorActual=="unsigned_decimal"){
+qDebug()<<"entre!!!";
       /*
-            //   if(QString::number(DtoB(ui->tableWidget->item(j,i)->text().toLong())).length()>1){
+            //   if(QString::number(unsigned_DtoB(ui->tableWidget->item(j,i)->text().toLong())).length()>1){
                         signales_valores+=signal_lista[j];signales_valores+=" <= ";
-                               string kk=QString::number(DtoB(ui->tableWidget->item(j,i)->text().toLong())).toUtf8().constData();
+                               string kk=QString::number(unsigned_DtoB(ui->tableWidget->item(j,i)->text().toLong())).toUtf8().constData();
                                signales_valores+="(";
                                for(int i=0;i<kk.length();i++){
                                signales_valores+=QString::number(i);signales_valores+=" => '";signales_valores+=kk[kk.length()-i-1];signales_valores+="',";
                                }
                                signales_valores+="others => '0'); ";
             //      }
-              //    else {signales_valores+=signal_lista[j];signales_valores+=" <= '";signales_valores+=QString::number(DtoB(ui->tableWidget->item(j,i)->text().toLong()));signales_valores+="';";}
+              //    else {signales_valores+=signal_lista[j];signales_valores+=" <= '";signales_valores+=QString::number(unsigned_DtoB(ui->tableWidget->item(j,i)->text().toLong()));signales_valores+="';";}
             }
 */
                 if(bits_lista[j].toInt()==1)
                 {
-                    signales_valores+=signal_lista[j];signales_valores+=" <= '";signales_valores+=QString::number(DtoB(ui->tableWidget->item(j,i)->text().toLong()));signales_valores+="';";
+                    signales_valores+=signal_lista[j];signales_valores+=" <= '";signales_valores+=unsigned_DtoB(ui->tableWidget->item(j,i)->text().toLong());signales_valores+="';";
                 }
 
                 else if(bits_lista[j].toInt()>1 ){
                     signales_valores+=signal_lista[j];signales_valores+=" <= ";
-                           string kk=QString::number(DtoB(ui->tableWidget->item(j,i)->text().toLong())).toUtf8().constData();
+                           string kk=unsigned_DtoB(ui->tableWidget->item(j,i)->text().toLong()).toUtf8().constData();
                            signales_valores+="(";
                            for(int i=0;i<kk.length();i++){
                            signales_valores+=QString::number(i);signales_valores+=" => '";signales_valores+=kk[kk.length()-i-1];signales_valores+="',";
                            }
                            signales_valores+="others => '0'); ";
                 }
-                else QMessageBox::information(this,"Error en la tabla","Solo se admiten decimales positivos(los negativos ponerlos en binario)\nHexadecimal todavia no desarrollado");
+                else QMessageBox::information(this,"Error in table","Only unsigned decimals are allowed, change to signed decimals");
+
+
+                }
+
+
+            if(convertidorActual=="signed decimal"){
+
+
+                if(bits_lista[j].toInt()==1)
+                {
+                    signales_valores+=signal_lista[j];signales_valores+=" <= '";signales_valores+=signed_DtoB(ui->tableWidget->item(j,i)->text().toLong());signales_valores+="';";
+                }
+
+                else
+                    signales_valores+=signal_lista[j];signales_valores+=" <= ";
+                signales_valores+="\""+d_to_b(ui->tableWidget->item(j,i)->text().toLong(),bits_lista[j].toInt())+"\"; ";
+
 
 
                 }
@@ -2084,7 +2245,8 @@ signales_valores.clear();
  proyecto+="\nwait;";
  proyecto+="end process;\nend;";
 
- QString name_testbench=nombreActual+"_tb";
+ QString nombre_puro=nombreActual.split(".")[0];
+ QString name_testbench=nombre_puro+"_tb";
  QString dir=ubicacionActual+name_testbench+".vhdl";
  QFile file(dir);
      if(!file.open(QFile::WriteOnly | QFile::Text)){return;}
@@ -2098,7 +2260,7 @@ signales_valores.clear();
      else {
         ui->textEdit_2->setTextColor(Qt::white);
      }
-     qDebug()<<"test "<<name_testbench+".vhdl";
+
   //compilando tb
   process.setWorkingDirectory(ubicacionActual);
   ui->textEdit_2->append("$ghdl -a "+name_testbench+".vhdl");
@@ -2130,6 +2292,7 @@ signales_valores.clear();
                              ui->textEdit_2->append("gtkwave ondas.vcd");
                                  process.start("gtkwave ondas.vcd");
 gtkwave=1;
+
 ui->centralWidget->setEnabled(false);
 
 
@@ -2210,7 +2373,8 @@ void MainWindow::processFinished(int code , QProcess::ExitStatus status)
 {
 if(gtkwave){
 ui->centralWidget->setEnabled(true);
-    //QMessageBox::information(this,"se termino","se termino");
+ui->label_13->setVisible(false);
+ui->label_13->setEnabled(false);
     gtkwave=0;}
 }
 
@@ -2229,7 +2393,7 @@ void MainWindow::on_actionAgregar_componente_triggered()
     QString path = ubicacionActual;
         QDir dir(path);
         QStringList filters;
-        filters << "*.vhdl";
+        filters << "*.vhdl"<<"*.vhd";
 
         foreach (QFileInfo fileInfo, dir.entryInfoList(filters, QDir::Files))
         {
@@ -2300,7 +2464,7 @@ void MainWindow::showContextMenu(const QPoint &pt)
     QString path = ubicacionActual;
         QDir dir(path);
         QStringList filters;
-        filters << "*.vhdl";
+        filters << "*.vhdl"<<"*.vhd";
 
         foreach (QFileInfo fileInfo, dir.entryInfoList(filters, QDir::Files))
         {
@@ -2323,7 +2487,7 @@ void MainWindow::showContextMenu(const QPoint &pt)
         }
 
 
-fa.clear();init_component.clear();
+fa.clear();init_component.clear();inst_component.clear();
 
 for(int i=0;i<archivos.length();i++){
     if(!oscuro) ui->textEdit_2->setTextColor(Qt::black);
@@ -2426,7 +2590,16 @@ ejemplo.show();
 
 void MainWindow::on_pushButton_15_clicked()
 {
+    int n=QInputDialog::getInt(this, "Set value", "Set value : ");
+      QItemSelectionModel* selectionModel = ui->tableWidget->selectionModel();
+   QModelIndexList s_row = selectionModel->selectedIndexes();
+          for(int i= 0; i< s_row.count();i++)
+         {
+              QModelIndex index = s_row.at(i);
+  ui->tableWidget->setItem( index.row(),index.column(),new QTableWidgetItem(QString::number(n)));
+          }
 
+  ui->tableWidget->setItemDelegate( new MyDelegate(this) );
 }
 
 void MainWindow::on_actionGuardar_todo_triggered()
@@ -2466,7 +2639,7 @@ QString sPath = dirModel->fileInfo(index).absoluteFilePath();
 ui->listWidget->setRootIndex(fileModel->setRootPath(sPath));
 QDir path(sPath);
 QStringList filters;
-filters << "*.vhdl";
+filters << "*.vhdl"<<"*.vhd";
 path.setNameFilters(filters);
 items = path.entryList();
 
@@ -2597,6 +2770,32 @@ declarar_componente();
         return false; // process this event further
     }
     else
+
+    if(watched == ui->tableWidget)
+    {
+        if(event->type() == QKeyEvent::KeyPress)
+        {
+
+            QKeyEvent * ke = static_cast<QKeyEvent*>(event);
+            //if(ke->key() == Qt::Key_F1)
+              if ( (ke->key() == Qt::Key_Return))
+            {
+                 int n=QInputDialog::getInt(this, "Set value", "Set value : ");
+                 QItemSelectionModel* selectionModel = ui->tableWidget->selectionModel();
+              QModelIndexList s_row = selectionModel->selectedIndexes();
+                     for(int i= 0; i< s_row.count();i++)
+                    {
+                         QModelIndex index = s_row.at(i);
+             ui->tableWidget->setItem( index.row(),index.column(),new QTableWidgetItem(QString::number(n)));
+                     }
+
+             ui->tableWidget->setItemDelegate( new MyDelegate(this) );
+             }
+        }
+        return false; // process this event further
+    }
+
+    else
     {
         // pass the event on to the parent class
         return QMainWindow::eventFilter(watched, event);
@@ -2658,150 +2857,203 @@ void MainWindow::on_lineEdit_6_returnPressed()
 {
 
     proyecto.clear();
- //   if(i>=0)codigo[i]=ui->textEdit->toPlainText();
-    bool bien=true;
-    proyecto+="library ieee;\nuse ieee.std_logic_1164.all;\n\nentity ";
-    proyecto+=ui->lineEdit_6->text().toUtf8().constData();
-    proyecto+=" is\nport(\n";
+  //   if(i>=0)codigo[i]=ui->textEdit->toPlainText();
+     bool bien=true;
+     proyecto+="library ieee;\nuse ieee.std_logic_1164.all;\n\nentity ";
+     proyecto+=ui->lineEdit_6->text().toUtf8().constData();
+     proyecto+=" is\nport(\n";
 
-  //  QString item_2,item_3;QStringList InputComboData;
-for(int j=0;j<ui->tableWidget_2->model()->rowCount();j++){
-    bien=true;
-    QTableWidgetItem* item = ui->tableWidget_2->item(j,0);
-    if (!item || item->text().isEmpty())
-    {
-      bien=false;
+   //  QString item_2,item_3;QStringList InputComboData;
+ for(int j=0;j<ui->tableWidget_2->model()->rowCount();j++){
+     bien=true;
+     QTableWidgetItem* item = ui->tableWidget_2->item(j,0);
+     if (!item || item->text().isEmpty())
+     {
+       bien=false;
+     }
+     //if(ui->tableWidget_2->item(j,0)->text().isEmpty()){bien=false;break;}
+     if(bien){
+     proyecto+=ui->tableWidget_2->item(j,0)->text().toUtf8().constData();proyecto+=" : ";
+     QComboBox *m = qobject_cast<QComboBox*>(ui->tableWidget_2->cellWidget(j,1));
+    proyecto+=m->currentText().toUtf8().constData();proyecto+=" ";
+
+
+     int num = ui->tableWidget_2->item(j,2)->text().toInt();
+    //  int num=2;
+    if(num>1){
+    if(j==ui->tableWidget_2->model()->rowCount()-1)
+        proyecto+="std_logic_vector("+to_string(num-1)+" downto 0)\n";
+    else
+        proyecto+="std_logic_vector("+to_string(num-1)+" downto 0);\n";
     }
-    //if(ui->tableWidget_2->item(j,0)->text().isEmpty()){bien=false;break;}
-    if(bien){
-    proyecto+=ui->tableWidget_2->item(j,0)->text().toUtf8().constData();proyecto+=" : ";
-    QComboBox *m = qobject_cast<QComboBox*>(ui->tableWidget_2->cellWidget(j,1));
-   proyecto+=m->currentText().toUtf8().constData();proyecto+=" ";
+    else{if(j==ui->tableWidget_2->model()->rowCount()-1)proyecto+="std_logic\n";
+        else
+            proyecto+="std_logic;\n";}
 
+     //InputComboData << m->currentText();
+     }}
+ //cout<<proyecto<<endl;
 
-    int num = ui->tableWidget_2->item(j,2)->text().toInt();
-   //  int num=2;
-   if(num>1){
-   if(j==ui->tableWidget_2->model()->rowCount()-1)
-       proyecto+="std_logic_vector("+to_string(num-1)+" downto 0)\n";
-   else
-       proyecto+="std_logic_vector("+to_string(num-1)+" downto 0);\n";
-   }
-   else{if(j==ui->tableWidget_2->model()->rowCount()-1)proyecto+="std_logic\n";
-       else
-           proyecto+="std_logic;\n";}
-
-    //InputComboData << m->currentText();
-    }}
-//cout<<proyecto<<endl;
-
-proyecto+=");\n";
-proyecto+="end ";
-proyecto+=ui->lineEdit_6->text().toUtf8().constData();
-proyecto+=";\n\n";
-proyecto+="architecture arc of ";
-proyecto+=ui->lineEdit_6->text().toUtf8().constData();
-proyecto+=" is\n\nbegin\n\nend arc;";
+ proyecto+=");\n";
+ proyecto+="end ";
+ proyecto+=ui->lineEdit_6->text().toUtf8().constData();
+ proyecto+=";\n\n";
+ proyecto+="architecture arc of ";
+ proyecto+=ui->lineEdit_6->text().toUtf8().constData();
+ proyecto+=" is\n\nbegin\n\nend arc;";
 
 
 
 
-ui->groupBox->setVisible(true);
-ui->groupBox_2->setVisible(false);
-ui->groupBox_4->setVisible(false);
-ui->groupBox_5->setVisible(false);
+ ui->groupBox->setVisible(true);
+ ui->groupBox_2->setVisible(false);
+ ui->groupBox_4->setVisible(false);
+ ui->groupBox_5->setVisible(false);
 
-for(sd=1;sd<= ui->textEdit->document()->blockCount();sd++){
-    ui->textEdit_3->append(QString::number(sd));
-ui->textEdit_3->setAlignment(Qt::AlignRight);}
-ui->textEdit_3->verticalScrollBar()->setValue(ui->textEdit->verticalScrollBar()->value());
-
-//guardar
-ubicacionActual=ui->lineEdit_5->text();
-nombreActual=ui->lineEdit_6->text();
-nombreActual.replace(".vhdl","");
-nombreActual+=".vhdl";
-QString dir=ubicacionActual+nombreActual;
-QFile file(dir);
-    if(!file.open(QFile::WriteOnly | QFile::Text)){return;}
-    QTextStream out(&file);
-out << proyecto.c_str();
-    file.flush();
-    file.close();
-
-
-//cargar
-
-    QString nom=dir.mid(dir.lastIndexOf("/")+1,dir.length());
-    QString fol=dir.mid(0,dir.lastIndexOf("/"));fol+="/";
-
-  //  dirModel->setRootPath("");
-ui->treeView->setCurrentIndex(dirModel->setRootPath(fol));
-
-
-    ui->listWidget->blockSignals(true);
-    ui->listWidget->clear();
-    ui->listWidget->blockSignals(false);
-
-    items.clear();items_normales.clear();items_testbench.clear();
-            QDir path(fol);
-            QStringList filters;
-            filters << "*.vhdl";
-            path.setNameFilters(filters);
-            items = path.entryList();
-
-
-for(int i=0;i<items.length();i++){
-QListWidgetItem * a = new QListWidgetItem(items[i]);
-if(!a->text().contains("_tb")){
-items_normales<<items[i];
-a->setIcon(QIcon(":/iconos/file7.png"));
-ui->listWidget->addItem(a);
-}
-else {
-
-items_testbench<<items[i];
-a->setIcon(QIcon(":/iconos/file8.png"));
-ui->listWidget_2->addItem(a);
-}
-}
-
-for(int i=0;i<items_testbench.length();i++){
-QString dir=ubicacionActual+items_testbench[i];
-QFile file(dir);
-if (!file.open(QIODevice::ReadOnly | QIODevice::Text))return;
-else {
- fileInfo=(file.fileName());
- nombre_t[i]=fileInfo.fileName();
- dirPuro_t[i]=fileInfo.absolutePath();dirPuro[i]+='/';
- in.setDevice(&file);
- codigo_t[i]=in.readAll();
- ui->textEdit_3->setText("");
  for(sd=1;sd<= ui->textEdit->document()->blockCount();sd++){
- ui->textEdit_3->append(QString::number(sd));
+     ui->textEdit_3->append(QString::number(sd));
  ui->textEdit_3->setAlignment(Qt::AlignRight);}
  ui->textEdit_3->verticalScrollBar()->setValue(ui->textEdit->verticalScrollBar()->value());
- ui->listWidget_2->setCurrentRow(0);
+
+ //guardar
+ ubicacionActual=ui->lineEdit_5->text();
+ nombreActual=ui->lineEdit_6->text();
+ if(!nombreActual.contains(".vhdl") && !nombreActual.contains(".vhd")){nombreActual+=".vhdl";}
+ QString dir=ubicacionActual+nombreActual;
+ QFile file(dir);
+     if(!file.open(QFile::WriteOnly | QFile::Text)){return;}
+     QTextStream out(&file);
+ out << proyecto.c_str();
+     file.flush();
+     file.close();
+
+
+ //cargar
+
+     QString nom=dir.mid(dir.lastIndexOf("/")+1,dir.length());
+     QString fol=dir.mid(0,dir.lastIndexOf("/"));fol+="/";
+
+   //  dirModel->setRootPath("");
+ ui->treeView->setCurrentIndex(dirModel->setRootPath(fol));
+
+
+     ui->listWidget->blockSignals(true);
+     ui->listWidget->clear();
+     ui->listWidget->blockSignals(false);
+
+     items.clear();items_normales.clear();items_testbench.clear();
+             QDir path(fol);
+             QStringList filters;
+             filters << "*.vhdl"<<"*.vhd"<<"*.vhd";
+             path.setNameFilters(filters);
+             items = path.entryList();
+
+
+ for(int i=0;i<items.length();i++){
+ QListWidgetItem * a = new QListWidgetItem(items[i]);
+ if(!a->text().contains("_tb")){
+ items_normales<<items[i];
+ a->setIcon(QIcon(":/iconos/file7.png"));
+ ui->listWidget->addItem(a);
+ }
+ else {
+
+ items_testbench<<items[i];
+ a->setIcon(QIcon(":/iconos/file8.png"));
+ ui->listWidget_2->addItem(a);
+ }
+ }
+
+ for(int i=0;i<items_testbench.length();i++){
+ QString dir=ubicacionActual+items_testbench[i];
+ QFile file(dir);
+ if (!file.open(QIODevice::ReadOnly | QIODevice::Text))return;
+ else {
+  fileInfo=(file.fileName());
+  nombre_t[i]=fileInfo.fileName();
+  dirPuro_t[i]=fileInfo.absolutePath();dirPuro[i]+='/';
+  in.setDevice(&file);
+  codigo_t[i]=in.readAll();
+  ui->textEdit_3->setText("");
+  for(sd=1;sd<= ui->textEdit->document()->blockCount();sd++){
+  ui->textEdit_3->append(QString::number(sd));
+  ui->textEdit_3->setAlignment(Qt::AlignRight);}
+  ui->textEdit_3->verticalScrollBar()->setValue(ui->textEdit->verticalScrollBar()->value());
+  ui->listWidget_2->setCurrentRow(0);
+ }
+ }
+
+ for(int i=0;i<items_normales.length();i++){
+ QString dir=ubicacionActual+items_normales[i];
+ QFile file(dir);
+ if (!file.open(QIODevice::ReadOnly | QIODevice::Text))return;
+ else {
+  fileInfo=(file.fileName());
+  nombre[i]=fileInfo.fileName();
+  dirPuro[i]=fileInfo.absolutePath();dirPuro[i]+='/';
+  in.setDevice(&file);
+  codigo[i]=in.readAll();
+  ui->textEdit_3->setText("");
+  for(sd=1;sd<= ui->textEdit->document()->blockCount();sd++){
+  ui->textEdit_3->append(QString::number(sd));
+  ui->textEdit_3->setAlignment(Qt::AlignRight);}
+  ui->textEdit_3->verticalScrollBar()->setValue(ui->textEdit->verticalScrollBar()->value());
+  if(items_normales[i]==nom){ui->listWidget->setCurrentRow(i);ui->textEdit->setText(codigo[i]);}
+ }
+ }
+
+
+}
+
+void MainWindow::on_horizontalSlider_valueChanged(int value)
+{
+    for(int i=0;i<ui->tableWidget->model()->columnCount();i++)
+   ui->tableWidget->setColumnWidth(i,value);
+    ui->tableWidget->setItemDelegate( new MyDelegate(this) );
+}
+
+void MainWindow::on_pushButton_17_clicked()
+{
+    for(int i=0;i<ui->tableWidget->model()->columnCount();i++){
+ui->tableWidget->setItem(current_row_table,i,new QTableWidgetItem("0"));
 }
 }
 
-for(int i=0;i<items_normales.length();i++){
-QString dir=ubicacionActual+items_normales[i];
-QFile file(dir);
-if (!file.open(QIODevice::ReadOnly | QIODevice::Text))return;
-else {
- fileInfo=(file.fileName());
- nombre[i]=fileInfo.fileName();
- dirPuro[i]=fileInfo.absolutePath();dirPuro[i]+='/';
- in.setDevice(&file);
- codigo[i]=in.readAll();
- ui->textEdit_3->setText("");
- for(sd=1;sd<= ui->textEdit->document()->blockCount();sd++){
- ui->textEdit_3->append(QString::number(sd));
- ui->textEdit_3->setAlignment(Qt::AlignRight);}
- ui->textEdit_3->verticalScrollBar()->setValue(ui->textEdit->verticalScrollBar()->value());
- if(items_normales[i]==nom){ui->listWidget->setCurrentRow(i);ui->textEdit->setText(codigo[i]);}
-}
+void MainWindow::on_pushButton_18_clicked()
+{
+    for(int i=0;i<ui->tableWidget->model()->columnCount();i++){
+ui->tableWidget->setItem(current_row_table,i,new QTableWidgetItem("1"));
+    }
 }
 
+void MainWindow::on_pushButton_19_clicked()
+{
+    int blink=1,c=0;
+    int periodo=QInputDialog::getInt(this, "Set clock signal", "Period [ns] : ");
+  int flanco=periodo/2;
+  flanco=flanco/ui->lineEdit_8->text().toInt();
+    for(int i=0;i<ui->tableWidget->model()->columnCount();i++){
+        if(c==flanco){blink^=1;c=0;}
+            c++;
+        if(blink){ui->tableWidget->setItem(current_row_table,i,new QTableWidgetItem("1"));
+         if(flanco==1){ui->tableWidget->item(current_row_table,i)->setData(Qt::UserRole, 10);} else
+             if(c==1)ui->tableWidget->item(current_row_table,i)->setData(Qt::UserRole, 3);
+         else         if(c==flanco)ui->tableWidget->item(current_row_table,i)->setData(Qt::UserRole, 4);
+            else ui->tableWidget->item(current_row_table,i)->setData(Qt::UserRole, 1);
+
+        }
+       else{ui->tableWidget->setItem(current_row_table,i,new QTableWidgetItem("0"));
+        ui->tableWidget->item(current_row_table,i)->setData(Qt::UserRole, 2);}
+
+
+    }
+ui->tableWidget->setItemDelegate( new MyDelegate(this) );
+}
+
+void MainWindow::on_tableWidget_cellClicked(int row, int column)
+{
+    current_row_table=row;
+     for(int i=0;i<ui->tableWidget->model()->columnCount();i++)
+    ui->tableWidget->setColumnWidth(i,ui->horizontalSlider->value());
+ui->tableWidget->setItemDelegate( new MyDelegate(this) );
 }

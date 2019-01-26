@@ -105,8 +105,21 @@ Highlighter::Highlighter(QTextDocument *parent)
         highlightingRules.append(rule);
 //! [0] //! [1]
     }
-//! [1]
 
+    keywordFormat.setForeground(QColor(0,0,255));
+    keywordFormat.setFontWeight(QFont::Normal);
+     keywordFormat.setFontItalic(true);
+    QStringList keywordPatterns2;
+    keywordPatterns2 << "std_logic" << "\\bstd_logic_vector\\b" << "\\bsigned\\b"
+                    << "\\bunsigned\\b" << "\\bieee.std_logic_1164\\b" << "\\bieee\\b" << "\\bieee.numeric_std\\b";
+    foreach (const QString &pattern, keywordPatterns2) {
+        rule.pattern = QRegularExpression(pattern);
+        rule.format = keywordFormat;
+        highlightingRules.append(rule);
+//! [0] //! [1]
+    }
+//! [1]
+keywordFormat.setFontItalic(false);
 //! [2]
     classFormat.setFontWeight(QFont::Bold);
     classFormat.setForeground(Qt::darkMagenta);
@@ -132,11 +145,13 @@ Highlighter::Highlighter(QTextDocument *parent)
 //! [4]
 
 //! [5]
+/*
     functionFormat.setFontItalic(true);
     functionFormat.setForeground(Qt::blue);
     rule.pattern = QRegularExpression("\\b[A-Za-z0-9_]+(?=\\()");
     rule.format = functionFormat;
     highlightingRules.append(rule);
+*/
 //! [5]
 
 //! [6]
@@ -190,14 +205,26 @@ void Highlighter::setcolor(int a){
                highlightingRules.append(rule);
 
            }
-
+           keywordFormat.setForeground(QColor(0,180,255));
+           keywordFormat.setFontWeight(QFont::Normal);
+            keywordFormat.setFontItalic(true);
+           QStringList keywordPatterns2;
+           keywordPatterns2 << "std_logic" << "\\bstd_logic_vector\\b" << "\\bsigned\\b"
+                           << "\\bunsigned\\b" << "\\bieee.std_logic_1164\\b" << "\\bieee\\b" << "\\bieee.numeric_std\\b";
+           foreach (const QString &pattern, keywordPatterns2) {
+               rule.pattern = QRegularExpression(pattern);
+               rule.format = keywordFormat;
+               highlightingRules.append(rule);
+       //! [0] //! [1]
+           }
+           keywordFormat.setFontItalic(false);
            classFormat.setFontWeight(QFont::Bold);
            classFormat.setForeground(Qt::darkMagenta);
            rule.pattern = QRegularExpression("\\bQ[A-Za-z]+\\b");
            rule.format = classFormat;
            highlightingRules.append(rule);
 
-           singleLineCommentFormat.setForeground(Qt::darkMagenta);
+           singleLineCommentFormat.setForeground(QColor(125,125,125));
            rule.pattern = QRegularExpression("--[^\n]*");
            rule.format = singleLineCommentFormat;
            highlightingRules.append(rule);
@@ -206,18 +233,20 @@ void Highlighter::setcolor(int a){
        //! [3]
 
        //! [4]
-           quotationFormat.setForeground(Qt::darkGreen);
+           quotationFormat.setForeground(QColor(240,240,0));
            rule.pattern = QRegularExpression("\".*\"");
            rule.format = quotationFormat;
            highlightingRules.append(rule);
        //! [4]
 
        //! [5]
+/*
            functionFormat.setFontItalic(true);
            functionFormat.setForeground(QColor(240,240,0));
            rule.pattern = QRegularExpression("\\b[A-Za-z0-9_]+(?=\\()");
            rule.format = functionFormat;
            highlightingRules.append(rule);
+*/
        //! [5]
 
        //! [6]
@@ -274,8 +303,20 @@ void Highlighter::setcolor(int a){
             highlightingRules.append(rule);
     //! [0] //! [1]
         }
+        keywordFormat.setForeground(QColor(0,0,255));
+        keywordFormat.setFontWeight(QFont::Normal);
+         keywordFormat.setFontItalic(true);
+        QStringList keywordPatterns2;
+        keywordPatterns2 << "std_logic" << "\\bstd_logic_vector\\b" << "\\bsigned\\b"
+                        << "\\bunsigned\\b" << "\\bieee.std_logic_1164\\b" << "\\bieee\\b" << "\\bieee.numeric_std\\b";
+        foreach (const QString &pattern, keywordPatterns2) {
+            rule.pattern = QRegularExpression(pattern);
+            rule.format = keywordFormat;
+            highlightingRules.append(rule);
+    //! [0] //! [1]
+        }
     //! [1]
-
+keywordFormat.setFontItalic(false);
     //! [2]
         classFormat.setFontWeight(QFont::Bold);
         classFormat.setForeground(Qt::darkMagenta);
@@ -301,11 +342,13 @@ void Highlighter::setcolor(int a){
     //! [4]
 
     //! [5]
+/*
         functionFormat.setFontItalic(true);
         functionFormat.setForeground(Qt::blue);
         rule.pattern = QRegularExpression("\\b[A-Za-z0-9_]+(?=\\()");
         rule.format = functionFormat;
         highlightingRules.append(rule);
+*/
     //! [5]
 
     //! [6]
